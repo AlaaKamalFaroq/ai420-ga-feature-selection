@@ -1,0 +1,2 @@
+ELITISM_K = 5
+NUM_RUNS = 5
