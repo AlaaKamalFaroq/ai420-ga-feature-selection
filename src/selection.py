@@ -1,4 +1,5 @@
 import numpy as np
+from config import TOURNAMENT_SIZE
 
 
 def roulette_wheel_selection(population, fitness_scores):
@@ -84,4 +85,8 @@ def select_parents(population, fitness_scores, method="tournament", tournament_s
         raise ValueError(
             f"Unknown selection method '{method}'. "
             "Choose from: 'roulette', 'tournament', 'rank'."
+<<<<<<< HEAD
         )
+=======
+        )
+>>>>>>> 27a19e5aaac250ee235a91e6192fdbaa1c03300f

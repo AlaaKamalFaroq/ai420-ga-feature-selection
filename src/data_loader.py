@@ -1,37 +1,3 @@
-"""
-data_loader.py
-==============
-Author  : Alaa
-Branch  : feature/alaa-data
-Purpose : Load, extract features from, and preprocess the Malaria Cell Image dataset.
-
-Dataset
--------
-Kaggle: "Cell Images for Detecting Malaria"
-https://www.kaggle.com/datasets/iarunava/cell-images-for-detecting-malaria
-
-Folder structure after download:
-    cell_images/
-        Parasitized/   (13 779 infected cell images)
-        Uninfected/    (13 779 healthy cell images)
-
-Feature extraction
-------------------
-Raw images cannot be fed directly to KNN or used as a binary GA chromosome.
-We extract a compact feature vector from each image using:
-  - HOG  (Histogram of Oriented Gradients) → shape / texture features
-  - Colour histogram (HSV)                  → colour features
-  - Combined: 36 features per image (configurable)
-
-Run this file once to generate and save the feature matrix so the GA
-does not re-extract features on every run.
-
-Usage
------
-    python src/data_loader.py           # extract + save features
-    from src.data_loader import load_data, preprocess, evaluate_subset
-"""
-
 import os
 import numpy as np
 import pandas as pd
@@ -44,7 +10,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score, classification_report
 
-from src.config import RANDOM_STATE, TEST_SIZE, NORMALIZE, KNN_NEIGHBORS
+from config import RANDOM_STATE, TEST_SIZE, NORMALIZE, KNN_NEIGHBORS
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 DATA_DIR     = Path("data/cell_images")
