@@ -23,7 +23,7 @@ def roulette_wheel_selection(population, fitness_scores):
     return population[selected_indices]
 
 
-def tournament_selection(population, fitness_scores, tournament_size=3):
+def tournament_selection(population, fitness_scores, tournament_size= TOURNAMENT_SIZE):
     """
     Tournament Selection.
     Randomly pick `tournament_size` individuals and select the best.
