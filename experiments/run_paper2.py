@@ -1,42 +1,46 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import numpy as np
 import json
 from src.ga_core import run_ga
-from src.config import NUM_RUNS
-
+from src.config import NUM_RUNS, SEEDS
 
 results = []
 
 # Run Experiments
 for run_id in range(NUM_RUNS):
 
-    print(f"Run {run_id}")
+    print(f"Run {run_id + 1}")
 
-    # Ensure reproducibility per run
-    np.random.seed(run_id)
+    # Reproducibility per run
+    np.random.seed(SEEDS[run_id])
 
-    best_fitness, best_individual = run_ga(
+    # Run GA
+    result = run_ga(
         selection_method="roulette",
         crossover_method="single_point",
-        mutation_method="bit_flip"
+        mutation_method="bit_flip",
+        verbose=True
     )
 
-    result = {
-        "run": run_id,
-        "fitness": float(best_fitness),
-        "num_features": int(np.sum(best_individual))
-    }
-
-    results.append(result)
+    # Store results
+    results.append({
+        "Seed": SEEDS[run_id],
+        "run": run_id + 1,
+        "fitness": float(result["best_fitness"]),
+        "num_features": int(np.sum(result["best_individual"]))
+    })
 
 
 # Show Results
-print("\nAll Results:")
+print("\nAll Results:\nSelection: Roulette, Crossover: Sing Point, Mutation: Bit Flip")
 for r in results:
     print(r)
 
 
 # Statistics
-fitness_values = [r["fitness"] for r in results]
+fitness_values = np.array([r["fitness"] for r in results], dtype=float)
 
 avg_fitness = np.mean(fitness_values)
 std_fitness = np.std(fitness_values)

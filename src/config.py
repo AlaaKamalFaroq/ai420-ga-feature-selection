@@ -18,7 +18,7 @@ NUM_RUNS         = 5
 CROSSOVER_RATE   = 0.85   # probability that two parents actually swap genes
 MUTATION_RATE    = 0.01   # per-bit probability for bit_flip;
                           # trigger probability for swap / inversion
-TOURNAMENT_SIZE = 3
+# TOURNAMENT_SIZE = 3
 
 # ── Experiment Seeds (first 5; full list in experiments/seeds.txt) ────────────
 SEEDS = [42, 7, 13, 99, 2025]

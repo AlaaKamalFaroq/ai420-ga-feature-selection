@@ -4,16 +4,20 @@ run_paper3.py  –  Member 3 (Aliyaa): Selection Operators Experiments
 Configuration : Rank Selection + Two-Point Crossover + Bit-Flip Mutation
 Runs          : 5  (seeds 200-204, stored in seeds.txt)
 """
-
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+# sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 
 import numpy as np
 import json
 import csv
-from ga_core import run_ga
-from config import NUM_RUNS
+# from src.ga_core import run_ga
+# from config import NUM_RUNS
+from src.ga_core import run_ga
+from src.config import NUM_RUNS
+
 
 # ── Fixed seeds for reproducibility (stored for reporting) ──────────────────
 SEEDS = [200, 201, 202, 203, 204]

@@ -7,8 +7,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score
-from config import RANDOM_STATE, TEST_SIZE, NORMALIZE, KNN_NEIGHBORS
-
+from src.config import RANDOM_STATE, TEST_SIZE, NORMALIZE, KNN_NEIGHBORS
 def load_data():
     data = load_breast_cancer()
     X, y = data.data, data.target
