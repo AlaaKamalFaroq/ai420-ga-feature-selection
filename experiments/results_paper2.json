@@ -1,0 +1,32 @@
+[
+    {
+        "Seed": 42,
+        "run": 1,
+        "fitness": 0.9963333333333333,
+        "num_features": 11
+    },
+    {
+        "Seed": 7,
+        "run": 2,
+        "fitness": 0.9791228070175438,
+        "num_features": 10
+    },
+    {
+        "Seed": 13,
+        "run": 3,
+        "fitness": 0.9868947368421053,
+        "num_features": 13
+    },
+    {
+        "Seed": 99,
+        "run": 4,
+        "fitness": 0.9878947368421053,
+        "num_features": 10
+    },
+    {
+        "Seed": 2025,
+        "run": 5,
+        "fitness": 0.9804561403508771,
+        "num_features": 6
+    }
+]
