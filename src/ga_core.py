@@ -1,15 +1,16 @@
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
-from data_loader import load_data, preprocess
-from config import POPULATION_SIZE, NUM_GENERATIONS, ELITISM_K, KNN_NEIGHBORS
+from src.data_loader import load_data, preprocess
+from src.selection import select_parents
+from src.operators import crossover, mutation
+from src.config import *
 
-
-# ── Load & preprocess once (not inside the loop) ────────────────────────────
+# Load & preprocess once (not inside the loop) 
 X_raw, y_raw, feature_names = load_data()
 X_train, X_test, y_train, y_test = preprocess(X_raw, y_raw)
 
 
-# ── Initialize Population ───────────────────────────────────────────────────
+# Initialize Population
 def initialize_population(num_features):
     return np.random.randint(
         0, 2,
@@ -17,7 +18,7 @@ def initialize_population(num_features):
     )
 
 
-# ── Real Fitness Function ───────────────────────────────────────────────────
+# Fitness Function
 def fitness(individual):
     """
     Objective: maximise classification accuracy while minimising feature count.
@@ -36,15 +37,16 @@ def fitness(individual):
     return acc - penalty
 
 
-# ── GA Main Loop ────────────────────────────────────────────────────────────
+# GA Main Loop
 def run_ga(selection_method,
            crossover_method,
            mutation_method,
            fitness_func=fitness,
+           selection_params=None,
            verbose=False):
 
-    from selection import select_parents
-    from operators import crossover, mutation
+    if selection_params is None:
+        selection_params = {}
 
     num_features = X_train.shape[1]
     population   = initialize_population(num_features)
@@ -77,7 +79,8 @@ def run_ga(selection_method,
         parents = select_parents(
             population,
             fitness_scores,
-            method=selection_method
+            method=selection_method,
+            **selection_params
         )
 
         # 5. Crossover
