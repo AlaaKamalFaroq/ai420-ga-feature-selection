@@ -14,7 +14,20 @@ def load_data():
     X, y = data.data, data.target
     names = data.feature_names
     print(f"Dataset Loaded: {X.shape[0]} samples, {X.shape[1]} features")
-    return X, y, names
+    return X, y, names    
+    import kagglehub
+    import os
+    
+    download_path = "data/malaria-dataset"
+    os.makedirs(download_path, exist_ok=True)
+    
+    # تحميل البيانات
+    dataset = kagglehub.dataset_download(
+        "iarunava/cell-images-for-detecting-malaria",
+        path=download_path
+    )
+    
+    print(f"done {dataset}")
 
 def run_eda(X, y, names):
     df = pd.DataFrame(X, columns=names)
