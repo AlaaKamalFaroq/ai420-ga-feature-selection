@@ -1,7 +1,7 @@
 """
 pso.py
 ======
-Author  : (integrate into ملك رجب's branch or assign to سما)
+Author  :A'laa
 Purpose : Binary Particle Swarm Optimisation (BPSO) for feature selection
           on the Malaria Cell Image dataset.
 
