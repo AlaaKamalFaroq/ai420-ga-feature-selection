@@ -25,4 +25,4 @@ ALPHA          = 0.99   # accuracy weight in fitness function
 
 # ── Experiment Seeds (first 5; full list in experiments/seeds.txt) ────────────
 SEEDS = [42, 7, 13, 99, 2025]
->>>>>>> 27a19e5aaac250ee235a91e6192fdbaa1c03300f
+
