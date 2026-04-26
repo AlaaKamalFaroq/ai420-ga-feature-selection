@@ -40,7 +40,7 @@ from src.config import (
     POPULATION_SIZE, NUM_GENERATIONS,
     KNN_NEIGHBORS, ALPHA
 )
-
+from src.config import TOURNAMENT_SIZE
 # ── PSO hyperparameters ───────────────────────────────────────────────────────
 W  = 0.7    # inertia weight        (how much old velocity is kept)
 C1 = 1.5    # cognitive coefficient  (pull toward personal best)
@@ -186,3 +186,27 @@ def run_pso(X_train, X_test, y_train, y_test, seed=None, verbose=False):
         "num_features":    int(gbest_pos.sum()),
         "history_best":    history_best,
     }
+if __name__ == "__main__":
+    from src.data_loader import load_data, preprocess
+    from src.config import SEEDS
+    import os
+
+  
+    X, y, names = load_data()
+    X_train, X_test, y_train, y_test = preprocess(X, y)
+
+    print("\n" + "="*40)
+    print("  RUNNING PARTICLE SWARM OPTIMIZATION")
+    print("="*40)
+
+    results = run_pso(X_train, X_test, y_train, y_test, seed=SEEDS[0], verbose=True)
+
+ 
+    print("\n" + "-"*30)
+    print("  PSO FINAL SUMMARY")
+    print("-"*30)
+    print(f"Initial Features  : {len(names)}")
+    print(f"Selected Features : {results['num_features']}")
+    print(f"Reduction Rate    : {(1 - results['num_features']/len(names))*100:.1f}%")
+    print(f"Test Accuracy     : {results['best_accuracy']:.4f}")
+    print("-"*30)
