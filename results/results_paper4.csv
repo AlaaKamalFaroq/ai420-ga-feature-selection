@@ -1,0 +1,26 @@
+config,selection,crossover,mutation,run,seed,best_fitness,num_features
+Tournament + Uniform + Swap,tournament,uniform,swap,1,300,0.9801228070175438,7
+Tournament + Uniform + Swap,tournament,uniform,swap,2,301,0.9878947368421053,10
+Tournament + Uniform + Swap,tournament,uniform,swap,3,302,0.9953333333333333,14
+Tournament + Uniform + Swap,tournament,uniform,swap,4,303,0.9872280701754386,12
+Tournament + Uniform + Swap,tournament,uniform,swap,5,304,0.9794561403508771,9
+Tournament + SinglePoint + Swap,tournament,single_point,swap,1,300,0.9875614035087719,11
+Tournament + SinglePoint + Swap,tournament,single_point,swap,2,301,0.9797894736842104,8
+Tournament + SinglePoint + Swap,tournament,single_point,swap,3,302,0.9787894736842104,11
+Tournament + SinglePoint + Swap,tournament,single_point,swap,4,303,0.9794561403508771,9
+Tournament + SinglePoint + Swap,tournament,single_point,swap,5,304,0.9872280701754386,12
+Tournament + TwoPoint + Swap,tournament,two_point,swap,1,300,0.9787894736842104,11
+Tournament + TwoPoint + Swap,tournament,two_point,swap,2,301,0.9787894736842104,11
+Tournament + TwoPoint + Swap,tournament,two_point,swap,3,302,0.9872280701754386,12
+Tournament + TwoPoint + Swap,tournament,two_point,swap,4,303,0.9787894736842104,11
+Tournament + TwoPoint + Swap,tournament,two_point,swap,5,304,0.9787894736842104,11
+Tournament + Uniform + BitFlip,tournament,uniform,bit_flip,1,300,0.9814561403508771,3
+Tournament + Uniform + BitFlip,tournament,uniform,bit_flip,2,301,0.9794561403508771,9
+Tournament + Uniform + BitFlip,tournament,uniform,bit_flip,3,302,0.9794561403508771,9
+Tournament + Uniform + BitFlip,tournament,uniform,bit_flip,4,303,0.9804561403508771,6
+Tournament + Uniform + BitFlip,tournament,uniform,bit_flip,5,304,0.9797894736842104,8
+Tournament + Uniform + Inversion,tournament,uniform,inversion,1,300,0.9794561403508771,9
+Tournament + Uniform + Inversion,tournament,uniform,inversion,2,301,0.9878947368421053,10
+Tournament + Uniform + Inversion,tournament,uniform,inversion,3,302,0.996,12
+Tournament + Uniform + Inversion,tournament,uniform,inversion,4,303,0.9878947368421053,10
+Tournament + Uniform + Inversion,tournament,uniform,inversion,5,304,0.9797894736842104,8
