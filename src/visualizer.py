@@ -262,6 +262,119 @@ def plot_accuracy_vs_reduction(data):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  PLOT 5 – Accuracy Metrics Summary Table
+# ══════════════════════════════════════════════════════════════════════════════
+
+def plot_accuracy_metrics_table(data):
+    """
+    جدول بصري يعرض كل الـ accuracy metrics من الـ summary_report:
+      Config | Algorithm | Mean Acc | Std | Min (mean-std) | Max (mean+std) | Reduction% | Runtime
+    """
+    col_labels = ["Config", "Algo", "Mean Acc", "Std", "Min Est.", "Max Est.", "Reduction%", "Runtime(s)"]
+
+    rows = []
+    for r in data:
+        rows.append([
+            r["config"],
+            r["algorithm"],
+            f"{r['acc_mean']:.4f}",
+            f"{r['acc_std']:.4f}",
+            f"{r['acc_mean'] - r['acc_std']:.4f}",   # lower bound estimate
+            f"{r['acc_mean'] + r['acc_std']:.4f}",   # upper bound estimate
+            f"{r['reduction']:.2f}%",
+            f"{r['runtime']:.1f}",
+        ])
+
+    # Sort by mean accuracy descending
+    rows.sort(key=lambda x: float(x[2]), reverse=True)
+
+    fig, ax = plt.subplots(figsize=(14, len(rows) * 0.65 + 1.8))
+    ax.axis("off")
+
+    table = ax.table(
+        cellText=rows,
+        colLabels=col_labels,
+        cellLoc="center",
+        loc="center",
+    )
+    table.auto_set_font_size(False)
+    table.set_fontsize(10)
+    table.scale(1, 1.7)
+
+    # Header style
+    for j in range(len(col_labels)):
+        table[0, j].set_facecolor("#1E3A5F")
+        table[0, j].set_text_props(color="white", fontweight="bold")
+
+    # Row colour coding
+    for i, row in enumerate(rows, 1):
+        algo = row[1]
+        base = (PSO_RED if algo == "PSO" else
+                ROUL_PURP if "Roulette" in row[0] else GA_BLUE)
+        for j in range(len(col_labels)):
+            cell = table[i, j]
+            cell.set_facecolor(base + "22")   # very light tint
+            if j == 2:   # Mean Acc column → bold
+                cell.set_text_props(fontweight="bold")
+
+        # Highlight best mean accuracy row
+        if i == 1:
+            for j in range(len(col_labels)):
+                table[i, j].set_facecolor("#FBBF2433")  # gold tint
+                table[i, j].set_text_props(fontweight="bold")
+
+    ax.set_title(
+        "Accuracy Metrics Summary  —  source: summary_report.csv\n"
+        "★ Top row = best configuration by mean accuracy",
+        fontsize=12, fontweight="bold", pad=14, loc="left"
+    )
+
+    fig.tight_layout()
+    _save(fig, "05_accuracy_metrics_table.png")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PRINT – Accuracy metrics to console  (bonus: easy copy-paste for report)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def print_accuracy_metrics(data):
+    header = f"{'Config':<35} {'Algo':<5} {'Mean':>8} {'Std':>8} {'Min':>8} {'Max':>8} {'Red%':>7} {'Runtime':>9}"
+    sep    = "-" * len(header)
+    print("\n" + sep)
+    print("  ACCURACY METRICS (from summary_report.csv)")
+    print(sep)
+    print(header)
+    print(sep)
+
+    sorted_data = sorted(data, key=lambda r: r["acc_mean"], reverse=True)
+    for i, r in enumerate(sorted_data):
+        flag = " ★" if i == 0 else "  "
+        print(
+            f"{r['config']:<35} {r['algorithm']:<5} "
+            f"{r['acc_mean']:>8.4f} {r['acc_std']:>8.4f} "
+            f"{r['acc_mean']-r['acc_std']:>8.4f} "
+            f"{r['acc_mean']+r['acc_std']:>8.4f} "
+            f"{r['reduction']:>6.2f}% "
+            f"{r['runtime']:>9.1f}s"
+            f"{flag}"
+        )
+    print(sep)
+
+    # Quick group stats
+    tourn = [r for r in data if "Tournament" in r["config"]]
+    roul  = [r for r in data if "Roulette"   in r["config"]]
+    pso   = [r for r in data if r["algorithm"] == "PSO"]
+
+    print("\n  GROUP AVERAGES:")
+    for name, group in [("GA Tournament", tourn), ("GA Roulette", roul), ("PSO", pso)]:
+        if group:
+            gm = np.mean([r["acc_mean"] for r in group])
+            gr = np.mean([r["reduction"] for r in group])
+            print(f"    {name:<15}  mean_acc={gm:.4f}   mean_reduction={gr:.2f}%")
+    print(sep + "\n")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  Main
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -285,9 +398,11 @@ def generate_all():
     plot_tournament_vs_roulette(data)
     plot_features_reduction(data)
     plot_accuracy_vs_reduction(data)
+    plot_accuracy_metrics_table(data)
+    print_accuracy_metrics(data)
 
     print("=" * 50)
-    print("  Done!  4 plots saved.")
+    print("  Done!  5 plots saved.")
     print("=" * 50)
 
 
