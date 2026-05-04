@@ -40,7 +40,6 @@ from src.config import (
     POPULATION_SIZE, NUM_GENERATIONS,
     KNN_NEIGHBORS, ALPHA
 )
-from src.config import TOURNAMENT_SIZE
 # ── PSO hyperparameters ───────────────────────────────────────────────────────
 W  = 0.7    # inertia weight        (how much old velocity is kept)
 C1 = 1.5    # cognitive coefficient  (pull toward personal best)
