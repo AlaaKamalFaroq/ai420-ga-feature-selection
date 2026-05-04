@@ -40,7 +40,7 @@ def main():
 
         for (label, sel, cx, mut) in GA_CONFIGS:
             print(f"\n>>> Running GA Config: {label}")
-            for run_idx in range(5): 
+            for run_idx in range(20,25): 
                 seed = SEEDS[run_idx]
                 t0 = time.time()
 
@@ -67,10 +67,10 @@ def main():
                     "runtime_sec": round(elapsed, 2)
                 })
                 csvfile.flush() 
-                print(f"   Run {run_idx + 1}/5 finished.")
+                print(f"   Run {run_idx + 1}/25 finished.")
 
         print(f"\n>>> Running PSO Baseline (5 Runs)")
-        for run_idx in range(5): 
+        for run_idx in range(20,25): 
             seed = SEEDS[run_idx]
             t0 = time.time()
             result = run_pso(X_train, X_test, y_train, y_test, seed=seed, verbose=False)
@@ -89,7 +89,7 @@ def main():
                 "runtime_sec": round(elapsed, 2)
             })
             csvfile.flush() 
-            print(f"   Run {run_idx + 1}/5 finished.")
+            print(f"   Run {run_idx + 1}/2python src/experiment_runner.py5 finished.")
 
     print(f"\n[SUCCESS] Experiments finished. Saved to {results_path}")
     _print_final_report(results_path, baseline_acc)
