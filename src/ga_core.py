@@ -1,367 +1,228 @@
-import streamlit as st
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from pathlib import Path
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import cross_val_score
 
-from src.ga_core import run_ga
-from src.pso import run_pso
+# ── Imports ──────────────────────────────────────────────────────────────────
 from src.data_loader import load_data, preprocess
+from src.selection import select_parents
+from src.operators import crossover, mutation
 
+from src.config import (
+    POPULATION_SIZE, NUM_GENERATIONS, ELITISM_K,
+    KNN_NEIGHBORS, ALPHA, CROSSOVER_RATE, MUTATION_RATE
+)
 
-# =====================================================
-# PAGE CONFIG
-# =====================================================
+# ── Load & preprocess once at module level ───────────────────────────────────
+X_raw, y_raw, feature_names = load_data()
+X_train, X_test, y_train, y_test = preprocess(X_raw, y_raw)
 
-st.set_page_config(page_title="GA vs PSO Dashboard", layout="wide")
+# ── Population initialisation ────────────────────────────────────────────────
+def initialize_population(num_features):
+    """Random binary initialisation."""
+    return np.random.randint(0, 2, (POPULATION_SIZE, num_features))
 
-st.title("🧬 GA vs PSO Feature Selection Dashboard")
+# ── Fitness Function (NO data leakage — 3-fold CV on X_train only) ───────────
+def fitness(individual):
+    """
+    Fitness = ALPHA * CV_accuracy + (1 - ALPHA) * (1 - feature_ratio)
+    Uses 3-fold cross-validation on X_train only to avoid test-set leakage.
+    """
+    indices = np.where(individual == 1)[0]
+    if len(indices) == 0:
+        return 0.0
 
-
-# =====================================================
-# LOAD DATA (IMPORTANT FOR PSO FIX)
-# =====================================================
-
-@st.cache_resource
-def get_data():
-    X, y, names = load_data()
-    return preprocess(X, y) + (names,)
-
-
-X_train, X_test, y_train, y_test, feature_names = get_data()
-num_features_total = X_train.shape[1]
-
-
-# =====================================================
-# SIDEBAR
-# =====================================================
-
-st.sidebar.header("⚙️ Algorithm Settings")
-
-algorithm = st.sidebar.selectbox("Choose Algorithm", ["GA", "PSO"])
-
-# ---------------- GA ----------------
-if algorithm == "GA":
-
-    st.sidebar.subheader("🧬 GA Parameters")
-
-    selection_method = st.sidebar.selectbox(
-        "Selection Method",
-        ["roulette", "tournament", "rank"]
+    model  = KNeighborsClassifier(n_neighbors=KNN_NEIGHBORS, n_jobs=-1)
+    scores = cross_val_score(
+        model, X_train[:, indices], y_train,
+        cv=3, scoring='accuracy'
     )
-
-    crossover_method = st.sidebar.selectbox(
-        "Crossover Method",
-        ["single_point", "two_point", "uniform"]
-    )
-
-    mutation_method = st.sidebar.selectbox(
-        "Mutation Method",
-        ["bit_flip", "swap", "inversion"]
-    )
-
-    survivor_method = st.sidebar.selectbox(
-        "Survivor Strategy",
-        ["elitism", "generational"]
-    )
-
-    # 👇 UI ONLY (not passed to GA)
-    population_size = st.sidebar.slider("Population Size", 10, 200, 50)
-    num_generations = st.sidebar.slider("Generations", 10, 500, 100)
-
-# ---------------- PSO ----------------
-else:
-    st.sidebar.subheader("🐝 PSO Parameters")
-
-    inertia = st.sidebar.slider("Inertia", 0.1, 1.0, 0.7)
-    c1 = st.sidebar.slider("Cognitive (c1)", 0.1, 2.5, 1.5)
-    c2 = st.sidebar.slider("Social (c2)", 0.1, 2.5, 1.5)
-
-    population_size = None
-    num_generations = None
+    acc          = scores.mean()
+    feature_ratio = len(indices) / len(individual)
+    return ALPHA * acc + (1.0 - ALPHA) * (1.0 - feature_ratio)
 
 
-num_features_total = 100
+# ── Survivor Selection Methods ────────────────────────────────────────────────
+
+def _elitism_replacement(population, fitness_scores, children, fitness_func, elites):
+    """
+    Survivor Selection Method 1: Elitism
+    ─────────────────────────────────────
+    Keep the top ELITISM_K individuals from the previous generation
+    and replace the worst ELITISM_K in the new population with them.
+    Guarantees the best solution is never lost.
+    """
+    new_fitness   = np.array([fitness_func(ind) for ind in children])
+    worst_indices = np.argsort(new_fitness)[:ELITISM_K]
+    children[worst_indices] = elites
+    return children
 
 
-# =====================================================
-# RUN EXPERIMENT
-# =====================================================
-
-if st.button("▶️ Run Experiment"):
-
-    with st.spinner("Running model..."):
-
-        # GA
-        if algorithm == "GA":
-            result = run_ga(
-                selection_method=selection_method,
-                crossover_method=crossover_method,
-                mutation_method=mutation_method,
-                verbose=False
-            )
-            algo_name = "GA"
-
-        # PSO
-                # ================= PSO (FIXED) =================
-        else:
-            result = run_pso(
-                X_train, X_test,
-                y_train, y_test,
-                verbose=False
-            )
-            algo_name = "PSO"
+def _generational_replacement(population, fitness_scores, children, fitness_func, elites):
+    """
+    Survivor Selection Method 2: Generational Replacement
+    ───────────────────────────────────────────────────────
+    Replace the entire population with children (full generational model).
+    Still keeps the single best individual (1 elite) to avoid losing the best.
+    This increases diversity compared to Elitism.
+    """
+    new_pop = children.copy()
+    # Keep only the single best from previous generation
+    best_idx = np.argmax(fitness_scores)
+    worst_new_idx = np.argmin([fitness_func(ind) for ind in new_pop])
+    new_pop[worst_new_idx] = population[best_idx].copy()
+    return new_pop
 
 
-    # =====================================================
-    # RESULTS
-    # =====================================================
+# ── Diversity Preservation ────────────────────────────────────────────────────
 
-    best_accuracy = result["best_accuracy"]
-    best_fitness = result.get("best_fitness", best_accuracy)
-    num_selected = result["num_features"]
-    history = result["history_best"]
-    best_individual = result["best_individual"]
+def _preserve_diversity(population, num_features):
+    """
+    Diversity Preservation via Duplicate Removal + Random Reinitialisation.
+    ────────────────────────────────────────────────────────────────────────
+    If more than 50% of the population are duplicates, remove them and
+    replace with random individuals to maintain exploration.
+    Always guarantees population size = POPULATION_SIZE.
+    """
+    unique = np.unique(population, axis=0)
 
-    reduction_percentage = ((num_features_total - num_selected) / num_features_total) * 100
-
-
-    # =====================================================
-    # METRICS
-    # =====================================================
-
-    st.success(f"{algo_name} Completed")
-
-    c1, c2, c3 = st.columns(3)
-
-    c1.metric("Accuracy", f"{best_accuracy:.4f}")
-    c2.metric("Selected Features", f"{num_selected}")
-    c3.metric("Reduction %", f"{reduction_percentage:.2f}%")
-
-
-    # =====================================================
-    # FITNESS CURVE
-    # =====================================================
-
-    st.subheader("📈 Fitness Curve")
-
-    fig, ax = plt.subplots()
-    ax.plot(history)
-    ax.set_xlabel("Generation")
-    ax.set_ylabel("Fitness")
-    ax.set_title(f"{algo_name} Convergence")
-    st.pyplot(fig)
-    # =====================================================
-# BOX PLOT (30 RUNS) - GA STYLE
-# =====================================================
-
-    st.write("---")
-    st.header("📦 Box Plot of 30 Runs (Stability Analysis)")
-
-# simulate multiple runs around best accuracy
-    run_results = np.random.normal(
-        loc=best_accuracy,
-        scale=0.01,
-        size=30
-    )
-
-    fig2, ax2 = plt.subplots()
-    ax2.boxplot(run_results)
-
-    ax2.set_title("Accuracy Distribution (30 Runs)")
-    ax2.set_ylabel("Accuracy")
-    ax2.grid(alpha=0.3)
-
-    st.pyplot(fig2)
-
-
-    # =====================================================
-    # SELECTED FEATURES
-    # =====================================================
-
-    st.subheader("📌 Selected Features")
-
-    selected_idx = np.where(best_individual == 1)[0]
-
-    df_features = pd.DataFrame({
-        "Feature Index": selected_idx
-    })
-
-    st.dataframe(df_features, use_container_width=True)
-
-
-
-
-
-
-# =====================================================
-# FULL SUMMARY REPORT TABLE
-# =====================================================
-
-st.write("---")
-st.header("📊 Full GA vs PSO Report")
-
-csv_path = Path(r"C:\Users\Asus\Downloads\EA\results\summary_report (1).csv")
-
-if csv_path.exists():
-
-    # ---------------- READ RAW FILE ----------------
-    df = pd.read_csv(csv_path, header=None)
-
-    # ---------------- CLEAN EMPTY ROWS ----------------
-    df = df.dropna(how="all")
-
-    # ---------------- FIND HEADER ROW ----------------
-    header_row = df[df.iloc[:, 0] == "algorithm"].index
-
-    if len(header_row) > 0:
-        header_row = header_row[0]
-
-        # set correct header
-        df.columns = df.iloc[header_row]
-
-        # keep only data rows
-        df = df[(header_row + 1):].reset_index(drop=True)
-
-        # rename clean columns
-        df.columns = [
-            "algorithm",
-            "config_label",
-            "accuracy_mean",
-            "accuracy_std",
-            "reduction_pct",
-            "runtime_sec"
-        ]
-
-        # convert numeric columns
-        for col in ["accuracy_mean", "accuracy_std", "reduction_pct", "runtime_sec"]:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-        df = df.dropna()
-
-        # ---------------- SHOW TABLE ----------------
-        st.dataframe(df, use_container_width=True)
-
-        # ---------------- DOWNLOAD BUTTON ----------------
-        csv_out = df.to_csv(index=False).encode("utf-8")
-
-        st.download_button(
-            label="📥 Download Report CSV",
-            data=csv_out,
-            file_name="clean_summary_report.csv",
-            mime="text/csv"
-        )
-
+    if len(unique) < POPULATION_SIZE * 0.5:
+        # Too many duplicates → reinitialise missing slots randomly
+        n_new      = POPULATION_SIZE - len(unique)
+        random_inds = np.random.randint(0, 2, (n_new, num_features))
+        population  = np.vstack([unique, random_inds])
     else:
-        st.error("Header row not found in CSV file")
+        population = unique[:POPULATION_SIZE]
 
-else:
-    st.warning("summary_report.csv not found. Please run experiments first.")
+    # Final size guarantee
+    if len(population) < POPULATION_SIZE:
+        extra      = np.random.randint(0, 2, (POPULATION_SIZE - len(population), num_features))
+        population = np.vstack([population, extra])
 
-
-
-
-
-
+    return population[:POPULATION_SIZE]
 
 
+# ── Main GA loop ─────────────────────────────────────────────────────────────
+
+def run_ga(
+    selection_method="tournament",
+    crossover_method="single_point",
+    mutation_method="bit_flip",
+    survivor_method="elitism",          # "elitism" | "generational"
+    fitness_func=fitness,
+    selection_params=None,
+    seed=None,
+    verbose=False,
+):
+    """
+    Run one independent GA experiment.
+
+    Parameters
+    ----------
+    selection_method : str   "tournament" | "roulette" | "rank"
+    crossover_method : str   "single_point" | "two_point" | "uniform"
+    mutation_method  : str   "bit_flip" | "swap" | "inversion"
+    survivor_method  : str   "elitism" | "generational"
+    seed             : int   for reproducibility
+    verbose          : bool  print progress every 10 generations
+
+    Returns
+    -------
+    dict with keys:
+        best_fitness, best_individual, best_accuracy,
+        num_features, history_best
+    """
+    if seed is not None:
+        np.random.seed(seed)
+
+    if selection_params is None:
+        selection_params = {}
+
+    num_features = X_train.shape[1]
+    population   = initialize_population(num_features)
+
+    best_individual = None
+    best_fitness    = -np.inf
+    history_best    = []
+
+    if verbose:
+        print(f"GA started | selection={selection_method} | "
+              f"crossover={crossover_method} | mutation={mutation_method} | "
+              f"survivor={survivor_method} | seed={seed}")
+
+    for gen in range(NUM_GENERATIONS):
+
+        # ── 1. Evaluate fitness ───────────────────────────────────────────
+        fitness_scores = np.array([fitness_func(ind) for ind in population])
+
+        # ── 2. Track global best ──────────────────────────────────────────
+        gen_best_idx = np.argmax(fitness_scores)
+        if fitness_scores[gen_best_idx] > best_fitness:
+            best_fitness    = float(fitness_scores[gen_best_idx])
+            best_individual = population[gen_best_idx].copy()
+
+        # ── 3. Save elites for survivor selection ─────────────────────────
+        elite_indices = np.argsort(fitness_scores)[-ELITISM_K:]
+        elites        = population[elite_indices].copy()
+
+        # ── 4. Selection → Crossover → Mutation ──────────────────────────
+        parents  = select_parents(
+            population, fitness_scores,
+            method=selection_method,
+            **selection_params
+        )
+        children = crossover(parents, method=crossover_method)
+        children = np.array([
+            mutation(ind.copy(), method=mutation_method)
+            for ind in children
+        ])
+
+        # ── 5. Survivor Selection (2 methods) ─────────────────────────────
+        if survivor_method == "generational":
+            population = _generational_replacement(
+                population, fitness_scores, children, fitness_func, elites
+            )
+        else:  # default: elitism
+            population = _elitism_replacement(
+                population, fitness_scores, children, fitness_func, elites
+            )
+
+        # ── 6. Diversity Preservation (Duplicate Removal) ─────────────────
+        population = _preserve_diversity(population, num_features)
+
+        # ── 7. Logging ────────────────────────────────────────────────────
+        history_best.append(float(np.max(fitness_scores)))
+        if verbose and gen % 10 == 0:
+            n_feats = int(np.sum(best_individual)) if best_individual is not None else 0
+            print(f"  Gen {gen:3d} | Best fitness: {best_fitness:.4f} | "
+                  f"Features: {n_feats}/{num_features}")
+
+    # ── Final evaluation on test set (ONCE after full run) ────────────────
+    final_indices = np.where(best_individual == 1)[0]
+    final_model   = KNeighborsClassifier(n_neighbors=KNN_NEIGHBORS, n_jobs=-1)
+    final_model.fit(X_train[:, final_indices], y_train)
+    best_accuracy = final_model.score(X_test[:, final_indices], y_test)
+
+    if verbose:
+        print(f"\nGA done | Best fitness: {best_fitness:.4f} | "
+              f"Test accuracy: {best_accuracy:.4f} | "
+              f"Features: {len(final_indices)}/{num_features}")
+
+    return {
+        "best_fitness":    best_fitness,
+        "best_individual": best_individual,
+        "best_accuracy":   best_accuracy,
+        "num_features":    int(np.sum(best_individual)),
+        "history_best":    history_best,
+    }
 
 
+if __name__ == "__main__":
+    from src.config import SEEDS
 
+    print("── Elitism Survivor Selection ──")
+    res = run_ga(verbose=True, seed=SEEDS[0], survivor_method="elitism")
+    print(f"Accuracy={res['best_accuracy']:.4f} | Features={res['num_features']}")
 
-
-
-
-
-## =====================================================
-# COMPARISON SECTION (GA vs PSO)
-# =====================================================
-
-st.write("---")
-st.header("⚔️ GA vs PSO Comparison")
-
-csv_path = Path("results/summary_report (1).csv")
-
-if not csv_path.exists():
-    st.warning("Run GA or PSO first to generate comparison data")
-
-else:
-    # ================= LOAD CSV SAFELY =================
-    df = pd.read_csv(csv_path, header=None)
-
-    # remove empty rows
-    df = df.dropna(how="all")
-
-    # find real header row (where "algorithm" exists)
-    header_row = df[df.iloc[:, 0] == "algorithm"].index[0]
-
-    # set header
-    df.columns = df.iloc[header_row]
-
-    # keep only actual data
-    df = df[(header_row + 1):].reset_index(drop=True)
-
-    # rename columns clearly
-    df.columns = [
-        "algorithm",
-        "config_label",
-        "accuracy",
-        "accuracy_std",
-        "reduction_pct",
-        "runtime_sec"
-    ]
-
-    # convert numeric columns
-    for col in ["accuracy", "accuracy_std", "reduction_pct", "runtime_sec"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    df = df.dropna()
-
-    # ================= SUMMARY =================
-    summary = df.groupby("algorithm").agg({
-        "accuracy": "mean",
-        "reduction_pct": "mean",
-        "runtime_sec": "mean"
-    }).reset_index()
-
-    st.dataframe(summary, use_container_width=True)
-
-    # ================= ACCURACY =================
-    st.subheader("📊 Accuracy Comparison")
-
-    fig1, ax1 = plt.subplots()
-    ax1.bar(summary["algorithm"], summary["accuracy"])
-    ax1.set_ylabel("Accuracy")
-    ax1.set_title("Mean Accuracy")
-    st.pyplot(fig1)
-
-    # ================= REDUCTION =================
-    st.subheader("📉 Feature Reduction Comparison")
-
-    fig2, ax2 = plt.subplots()
-    ax2.bar(summary["algorithm"], summary["reduction_pct"])
-    ax2.set_ylabel("Reduction %")
-    ax2.set_title("Feature Reduction")
-    st.pyplot(fig2)
-
-    # ================= RUNTIME =================
-    st.subheader("⏱ Runtime Comparison")
-
-    fig3, ax3 = plt.subplots()
-    ax3.bar(summary["algorithm"], summary["runtime_sec"])
-    ax3.set_ylabel("Seconds")
-    ax3.set_title("Runtime")
-    st.pyplot(fig3)
-# =====================================================
-# EDA ANALYSIS (IMAGE DISPLAY)
-# =====================================================
-
-st.write("---")
-st.header("🔬 EDA Analysis")
-
-eda_image_path = Path(r"C:\Users\Asus\Downloads\EA\results\plots\eda_correlation.png")
-
-if eda_image_path.exists():
-    st.image(str(eda_image_path), caption="EDA Correlation Heatmap", width=700)
-else:
-    st.warning("EDA image not found. Please check the file path.")
+    print("\n── Generational Survivor Selection ──")
+    res = run_ga(verbose=True, seed=SEEDS[0], survivor_method="generational")
+    print(f"Accuracy={res['best_accuracy']:.4f} | Features={res['num_features']}")
