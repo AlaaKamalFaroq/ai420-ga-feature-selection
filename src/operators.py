@@ -21,7 +21,7 @@ Supported mutation  methods : "bit_flip"      |  "swap"       |  "inversion"
 """
 
 import numpy as np
-from config import CROSSOVER_RATE, MUTATION_RATE
+from src.config import CROSSOVER_RATE, MUTATION_RATE
 
 
 # ─────────────────────────────────────────────────────────────────────────────

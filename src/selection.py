@@ -1,5 +1,5 @@
 import numpy as np
-from config import TOURNAMENT_SIZE
+from src.config import TOURNAMENT_SIZE
 
 
 def roulette_wheel_selection(population, fitness_scores):
