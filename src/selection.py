@@ -1,4 +1,5 @@
 import numpy as np
+from config import TOURNAMENT_SIZE
 
 
 def roulette_wheel_selection(population, fitness_scores):
@@ -23,7 +24,7 @@ def roulette_wheel_selection(population, fitness_scores):
     return population[selected_indices]
 
 
-def tournament_selection(population, fitness_scores, tournament_size=3):
+def tournament_selection(population, fitness_scores, tournament_size= TOURNAMENT_SIZE):
     """
     Tournament Selection.
     Randomly pick `tournament_size` individuals and select the best.
@@ -84,4 +85,5 @@ def select_parents(population, fitness_scores, method="tournament", tournament_s
         raise ValueError(
             f"Unknown selection method '{method}'. "
             "Choose from: 'roulette', 'tournament', 'rank'."
+
         )

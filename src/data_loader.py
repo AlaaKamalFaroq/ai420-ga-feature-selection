@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -54,7 +53,6 @@ if __name__ == "__main__":
     run_eda(X, y, names)
     X_train, X_test, y_train, y_test = preprocess(X, y)
     get_baseline_accuracy(X_train, X_test, y_train, y_test)
-=======
 import os
 import numpy as np
 import pandas as pd
@@ -239,4 +237,3 @@ if __name__ == "__main__":
     run_eda(X, y, names)
     X_train, X_test, y_train, y_test = preprocess(X, y)
     get_baseline_accuracy(X_train, X_test, y_train, y_test)
->>>>>>> Stashed changes
